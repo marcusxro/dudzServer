@@ -7,7 +7,7 @@ mongoose.connect(atlasUri, {
     useUnifiedTopology: true,
 })
     .then(() => {
-        console.log("Connected to MongoDB Atlas (inventory)");
+        console.log("Connected to MongoDB Atlas (Records)");
     })
     .catch((e) => {
         console.error("Error connecting to MongoDB Atlas:", e);
@@ -26,10 +26,6 @@ const mySchema = new mongoose.Schema({
         type: Object,
         require: true
     },
-    Expences: {
-        type: Object,
-        require: true
-    },
     date: {
         type: String,
         require: true
@@ -40,6 +36,6 @@ const mySchema = new mongoose.Schema({
     },
 });
 
-const Menu = mongoose.model('data', mySchema);
+const Menu = mongoose.model('Records', mySchema);
 
 module.exports = Menu;

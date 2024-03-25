@@ -14,6 +14,10 @@ mongoose.connect(atlasUri, {
     });
 
 const mySchema = new mongoose.Schema({
+    Username: {
+        type: String,
+        require: true
+    },
     Email: {
         type: String,
         require: true
@@ -22,7 +26,11 @@ const mySchema = new mongoose.Schema({
         type: Object,
         require: true
     },
-    position: {
+    Position: {
+        type: String,
+        require: true
+    },
+    Sex: {
         type: String,
         require: true
     },
