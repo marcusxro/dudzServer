@@ -30,6 +30,10 @@ const mySchema = new mongoose.Schema({
         type: String,
         require: true
     },
+    uniqueId: {
+        type: String,
+        require: true
+    },
     Uid: {
         type: String,
         require: true

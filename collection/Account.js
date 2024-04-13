@@ -34,6 +34,18 @@ const mySchema = new mongoose.Schema({
         type: String,
         require: true
     },
+    isDeleted: {
+        type: Boolean,
+        require: true
+    },
+    LogIn: {
+        type: String,
+        require: true
+    },
+    LoggedOut: {
+        type: String,
+        require: true
+    },
     Uid: {
         type: String,
         require: true

@@ -16,7 +16,7 @@ app.get('/', (req, res) => {
 });
 
 app.post('/SendData', async (req, res) => {
-    const { userName, Position, Expences,  data, date, Uid } = req.body
+    const { userName, Position, Expences, data, date, Uid } = req.body
 
     try {
         const sendData = new Inventory({
@@ -46,13 +46,13 @@ app.get('/GetData', async (req, res) => {
 
 app.put('/update/:tableID/:index', async (req, res) => {
     const { tableID, index } = req.params;
-    const { riceName, pricePerKilo, productSold } = req.body;
+    const { riceName, pricePerKilo, productQuantity } = req.body;
     try {
         // Construct the update object for the specific index
         const updateObject = {
             [`data.${index}.riceName`]: riceName,
             [`data.${index}.pricePerKilo`]: pricePerKilo,
-            [`data.${index}.productSold`]: productSold
+            [`data.${index}.productQuantity`]: productQuantity
         };
 
         // Update the document in the database
@@ -129,8 +129,8 @@ app.delete('/updateEx/:tableID/:index', async (req, res) => {
             { _id: tableID },
             { $pull: { Expences: null } }
         );
-        
-        
+
+
 
         // Check if the update operation was successful
         if (result.modifiedCount === 1) {
@@ -204,7 +204,7 @@ app.delete('/delete/:tableID/:index', async (req, res) => {
 
 
 app.post('/SendAcc', async (req, res) => {
-    const { Email, Username, Sex, Password, Position, Uid } = req.body
+    const { Email, Username, Sex, Password, Position, isDeleted, Uid } = req.body
     try {
         console.log(Username, Position)
         const sendData = new Accounts({
@@ -213,7 +213,8 @@ app.post('/SendAcc', async (req, res) => {
             Email: Email,
             Password: Password,
             Position: Position,
-            Uid: Uid
+            Uid: Uid,
+            isDeleted: isDeleted
         })
         await sendData.save()
         res.status(201).json({ message: 'Inventory created successfully' });
@@ -222,9 +223,64 @@ app.post('/SendAcc', async (req, res) => {
         res.status(500).json({ error: 'Error creating report' });
     }
 });
+app.put('/LoginDate/:Uid', async (req, res) => {
+    const { Uid } = req.params;
+    const { LogIn } = req.body;
 
 
+    try {
+        console.log(Uid);
+        // Find the document by its ID and update it
+        const result = await Accounts.findOneAndUpdate({ Uid: Uid }, { $set: { LogIn: LogIn } });
 
+        if (!result) {
+            return res.status(404).json({ error: "Item not found" });
+        }
+        res.status(200).json({ message: 'Updated successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/LogOutDate/:Uid', async (req, res) => {
+    const { Uid } = req.params;
+    const { LoggedOut } = req.body;
+
+
+    try {
+        console.log(Uid);
+        // Find the document by its ID and update it
+        const result = await Accounts.findOneAndUpdate({ Uid: Uid }, { $set: { LoggedOut: LoggedOut } });
+
+        if (!result) {
+            return res.status(404).json({ error: "Item not found" });
+        }
+        res.status(200).json({ message: 'Updated successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.put('/DelOrRec/:Uid', async (req, res) => {
+    const { Uid } = req.params;
+    const { isDeleted } = req.body;
+
+    try {
+        console.log(Uid);
+        // Find the document by its ID and update it
+        const result = await Accounts.findOneAndUpdate({ Uid: Uid }, { $set: { isDeleted: isDeleted } });
+
+        if (!result) {
+            return res.status(404).json({ error: "Item not found" });
+        }
+        res.status(200).json({ message: 'Updated successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 
 app.post('/SendExpences', async (req, res) => {
@@ -273,19 +329,46 @@ app.get('/GetAcc', async (req, res) => {
 
 
 //records endpoints
+const ImgDb = require('./collection/Img')
 
-app.post('/SendRecord', async (req, res) => {
-    const { userName, Position,  data, date, Uid } = req.body
+const multer = require('multer')
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, '../client/src/images')
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now();
+        cb(null, uniqueSuffix + file.originalname);
+    }
+});
 
+
+const path = require('path');
+app.use('/images', express.static(path.join(__dirname, '../client/src/images')));
+const upload = multer({ storage: storage })
+
+app.post('/SendRecord', upload.array('images'), async (req, res) => {
     try {
+        const { data } = req.body;
+        const { userName, Position, date, Uid, uniqueId } = JSON.parse(req.body.info);
+
+        const imagePaths = req.files.map(file => file.filename);
+
+        const parsedData = JSON.parse(data).map((item, index) => ({
+            ...item,
+            photoURL: item.photoURL ? imagePaths.shift() : null // Pair with corresponding image if available
+        }));
+
         const sendData = new RecordsDb({
             userName: userName,
             Position: Position,
-            data: data,
+            data: parsedData, // Updated data with correct photoURL
             date: date,
-            Uid: Uid
-        })
-        await sendData.save()
+            Uid: Uid,
+            uniqueId: uniqueId
+        });
+
+        await sendData.save();
         res.status(201).json({ message: 'Inventory created successfully' });
     } catch (err) {
         console.error('Error creating report:', err);
@@ -293,30 +376,82 @@ app.post('/SendRecord', async (req, res) => {
     }
 });
 
-app.get('/GetRecords', async (req, res) => {
-    RecordsDb.find()
-    .then((data) => {
-        res.json(data)
-    }).catch((err) => {
-        console.log(err)
-    })
+
+
+app.post('/uploadImg', upload.array('images'), async (req, res) => {
+    try {
+        const { userName, Uid, uniqueId } = req.body;
+        const imagePaths = req.files.map(file => file.filename); // Extract file paths from req.files
+        const indexes = req.body.index; // Extract indexes from req.body
+
+
+        const imageData = imagePaths.map((path, index) => ({
+            path,
+            index: indexes[index]
+        }));
+
+        console.log(imagePaths.map((path, index) => ({
+            path,
+            index: indexes[index]
+        })))
+
+
+        const newData = new ImgDb({
+            Data: imageData,
+            userName: userName,
+            Uid: Uid,
+            UniqueID: uniqueId
+        });
+
+        await newData.save();
+        res.send('Data saved successfully.');
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Error saving data.');
+    }
+});
+
+
+app.get('/getImg', async (req, res) => {
+    ImgDb.find()
+        .then((data) => { res.json(data) })
 })
 
+
+app.get('/GetRecords', async (req, res) => {
+    RecordsDb.find()
+        .then((data) => {
+            res.json(data)
+        }).catch((err) => {
+            console.log(err)
+        })
+})
 app.put('/updateRec/:tableID/:index', async (req, res) => {
     const { tableID, index } = req.params;
-    const { riceProd, Stocks, Price, StocksUsed, Supplier, ContactNum, DatePur, DateStock,  } = req.body;
+    const { riceProd, Stocks, Price, StocksUsed, PerKilo, ContactNum, DatePur, currentDate } = req.body;
     try {
         // Construct the update object for the specific index
-        const updateObject = {
-            [`data.${index}.riceProd`]: riceProd,
-            [`data.${index}.Stocks`]: Stocks,
-            [`data.${index}.Price`]: Price,
-            [`data.${index}.StocksUsed`]: StocksUsed,
-            [`data.${index}.Supplier`]: Supplier,
-            [`data.${index}.ContactNum`]: ContactNum,
-            [`data.${index}.DatePur`]: DatePur,
-            [`data.${index}.DateStock`]: DateStock,
-        };
+        const updateObject = {};
+
+        console.log(currentDate)
+        console.log(Stocks, StocksUsed)
+
+        if (riceProd) updateObject[`data.${index}.riceProd`] = riceProd;
+        if (Stocks) updateObject[`data.${index}.Stocks`] = Stocks;
+        if (Price) updateObject[`data.${index}.Price`] = Price;
+        if (StocksUsed) updateObject[`data.${index}.StocksUsed`] = StocksUsed;
+        if (PerKilo) updateObject[`data.${index}.PerKilo`] = PerKilo;
+        if (ContactNum) updateObject[`data.${index}.ContactNum`] = ContactNum;
+        if (DatePur) updateObject[`data.${index}.DatePur`] = DatePur;
+
+
+        // Check if Stocks and StocksUsed are valid numbers
+        if (!isNaN(parseFloat(Price)) && !isNaN(parseFloat(StocksUsed)) && parseFloat(Price) >= parseFloat(StocksUsed)) {
+            // If valid and Stocks is greater than or equal to StocksUsed, update DateStock to current date
+            updateObject[`data.${index}.DateStock`] = Date.now();
+        } else {
+            updateObject[`data.${index}.DateStock`] = '';
+        }
 
         // Update the document in the database
         const result = await RecordsDb.findByIdAndUpdate(tableID, {
